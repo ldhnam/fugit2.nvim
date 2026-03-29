@@ -294,6 +294,13 @@ ffi.cdef [[
     void *payload;
   } git_rebase_options;
 
+  typedef struct git_revert_options {
+    unsigned int version;
+    unsigned int mainline;
+    git_merge_options merge_opts;
+    git_checkout_options checkout_opts;
+  } git_revert_options;
+
   typedef struct git_rebase_operation {
     unsigned int type;
     const git_oid id;
@@ -400,6 +407,8 @@ ffi.cdef [[
   int git_checkout_head(git_repository *repo, const git_checkout_options *opts);
   int git_checkout_index(git_repository *repo, git_index *index, const git_checkout_options *opts);
   int git_checkout_tree(git_repository *repo, const git_object *treeish, const git_checkout_options *opts);
+
+  int git_revert(git_repository *repo, git_commit *commit, const git_revert_options *given_opts);
 
   char * git_oid_tostr(char *out, size_t n, const git_oid *id);
   char * git_oid_tostr_s(const git_oid *oid);
@@ -737,6 +746,7 @@ M.GIT_MERGE_OPTIONS_VERSION = 1
 M.GIT_PROXY_OPTIONS_VERSION = 1
 M.GIT_REBASE_OPTIONS_VERSION = 1
 M.GIT_REMOTE_CALLBACKS_VERSION = 1
+M.GIT_REVERT_OPTIONS_VERSION = 1
 M.GIT_STATUS_OPTIONS_VERSION = 1
 
 M.GIT_REBASE_NO_OPERATION = _UI64_MAX
@@ -1282,6 +1292,9 @@ M.GIT_REBASE_OPTIONS_INIT = {
 }
 M.GIT_STASH_APPLY_OPTIONS_INIT = {
   { M.GIT_STASH_APPLY_OPTIONS_VERSION, 0, M.GIT_CHECKOUT_OPTIONS_INIT[1] },
+}
+M.GIT_REVERT_OPTIONS_INIT = {
+  { M.GIT_REVERT_OPTIONS_VERSION, 0, M.GIT_MERGE_OPTIONS_INIT[1], M.GIT_CHECKOUT_OPTIONS_INIT[1] },
 }
 
 return M

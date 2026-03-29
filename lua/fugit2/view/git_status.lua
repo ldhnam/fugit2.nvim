@@ -68,6 +68,7 @@ local Menu = {
   REBASE = 7,
   FORGE = 8,
   STASH = 9,
+  REVERT = 10,
 }
 
 -- ======================
@@ -561,6 +562,12 @@ function GitStatus:_init_menus(menu_type)
         model = "stash_flags",
         default = false,
       },
+    }
+  elseif menu_type == Menu.REVERT then
+    menu_title = NuiText(" 󰕍 Reverting ", title_hl)
+    menu_items = {
+      { texts = { NuiText("  Revert ", head_hl) } },
+      { texts = { NuiText "  Revert commit(s)" }, key = "V" },
     }
   end
 
@@ -2717,6 +2724,59 @@ function GitStatus:_init_stash_menu()
   return m
 end
 
+-- =========================
+-- | Revert action methods |
+-- =========================
+
+---Reverts the commit currently selected in the commit log.
+function GitStatus:revert_commit()
+  local commit_log = self._views.commits
+  local commit, _ = commit_log:get_commit()
+  if not commit then
+    notifier.warn "No commit selected"
+    return
+  end
+
+  local oid, err = git2.ObjectId.from_string(commit.oid)
+  if not oid then
+    notifier.error("Invalid commit id", err)
+    return
+  end
+
+  local signature = self._git.signature
+  if not signature then
+    notifier.error "Can not find git signature!"
+    return
+  end
+
+  local confirm = UI.Confirm(
+    self.ns_id,
+    NuiLine { NuiText("󰕍 Revert commit "), NuiText(commit.oid:sub(1, 8), "Fugit2ObjectId"), NuiText("?") }
+  )
+  confirm:on_yes(function()
+    local _, revert_err = self.repo:revert(oid, signature)
+    if revert_err == 0 then
+      notifier.info("Reverted commit " .. commit.oid:sub(1, 8))
+      self:update_then_render()
+    else
+      notifier.error("Failed to revert commit", revert_err)
+    end
+  end)
+  confirm:show()
+end
+
+function GitStatus:_init_revert_menu()
+  local m = self:_init_menus(Menu.REVERT)
+
+  m:on_submit(function(item_id, _)
+    if item_id == "V" then
+      self:revert_commit()
+    end
+  end)
+
+  return m
+end
+
 local MENU_INITS = {
   [Menu.BRANCH] = GitStatus._init_branch_menu,
   [Menu.COMMIT] = GitStatus._init_commit_menu,
@@ -2727,6 +2787,7 @@ local MENU_INITS = {
   [Menu.FORGE] = GitStatus._init_forge_menu,
   [Menu.REBASE] = GitStatus._init_rebase_menu,
   [Menu.STASH] = GitStatus._init_stash_menu,
+  [Menu.REVERT] = GitStatus._init_revert_menu,
 }
 
 ---Menu handlers factory
@@ -3001,6 +3062,14 @@ function GitStatus:setup_handlers()
 
   -- Stash menu
   file_tree:map("n", "z", self:_menu_handlers(Menu.STASH), map_options)
+
+  -- Revert menu
+  file_tree:map("n", "V", self:_menu_handlers(Menu.REVERT), map_options)
+
+  -- Revert commit at point from commit log
+  commit_log:map("n", "V", function()
+    self:revert_commit()
+  end, map_options)
 end
 
 return GitStatus

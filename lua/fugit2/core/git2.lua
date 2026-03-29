@@ -4200,6 +4200,41 @@ function Repository:stash_drop(index)
   return libgit2_C.git_stash_drop(self.repo, index)
 end
 
+--- =======================
+--- | Repository: Revert |
+--- =======================
+
+---Reverts the given commit, applying inverse changes to index and workdir,
+---then automatically creates a revert commit.
+---@param oid GitObjectId commit OID to revert
+---@param signature GitSignature commit author/committer
+---@return GitObjectId? new_oid
+---@return GIT_ERROR err
+function Repository:revert(oid, signature)
+  local commit, err = self:commit_lookup(oid)
+  if err ~= 0 then
+    return nil, err
+  end
+
+  local summary = commit:summary()
+  local full_oid = oid:tostring(40)
+
+  local opts = ffi.new("git_revert_options[1]", libgit2.GIT_REVERT_OPTIONS_INIT)
+  err = libgit2_C.git_revert(self.repo, commit.commit, opts)
+  if err ~= 0 then
+    return nil, err
+  end
+
+  local index
+  index, err = self:index()
+  if err ~= 0 then
+    return nil, err
+  end
+
+  local message = string.format("Revert \"%s\"\n\nThis reverts commit %s.\n", summary, full_oid)
+  return self:create_commit(index, signature, message)
+end
+
 -- ==============================
 -- | Repository async functions |
 -- ==============================
